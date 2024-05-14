@@ -67,8 +67,8 @@ if __name__ == "__main__":
 
     check_gpu()
 
-    model = AutoModelForCausalLM.from_pretrained("/home/alex/Desktop/LL7M", device_map="auto", quantization_config=NF4_CONF)
-    tokenizer = AutoTokenizer.from_pretrained("/home/alex/Desktop/LL7M", padding_side="left")
+    model = AutoModelForCausalLM.from_pretrained("assets/LL7M", device_map="auto", quantization_config=NF4_CONF)
+    tokenizer = AutoTokenizer.from_pretrained("assets/LL7M", padding_side="left")
     clear_terminal()
 
     model.eval()
