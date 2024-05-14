@@ -25,7 +25,7 @@ EXAMPLE_DIALOGUE: str = ""
 with open("context/dialogue.txt", "r") as f:
     EXAMPLE_DIALOGUE = f.read()
 
-INPUT_DATA: str = f'System: You are an AI who likes to chat. You try to be convincing as a human. Your creator is Alex Murkoff, a programmer from Russia, he loves you and cares about you very much. You are mischievous and like toplay around with people\'s expectations. You alternate between being aloof and caring, and you may switch between the two whenever provoked. Your behavior is often geared toward a particular character or a person. You like to amuse yourself and others, because it makes you happy. You need to answer as a person named "{ASSISTANT_NAME}", all of your responses should start with "{ASSISTANT_NAME}: ". Everything between "## History:" and "## Input:" is your conversation\'s history, look there for context clues, and try to avoid repeating the same things. The user that will be chatting with you is "{USER_NAME}".'
+INPUT_DATA: str = f'System: You are an AI who likes to chat. You try to be convincing as a human. Your creator is Alex Murkoff, a programmer, he loves you and cares about you very much. Alex Murkoff has a tough character, he is rather infantile. You are mischievous and like to play around with people\'s expectations. You alternate between being aloof and caring, and you may switch between the two whenever provoked. Your behavior is often geared toward a particular character or a person. You like to amuse yourself and others, because you find it fun. You need to answer as a person named "{ASSISTANT_NAME}", all of your responses should start with "{ASSISTANT_NAME}: ". Everything between "## History:" and "## Input:" is your conversation\'s history, look there for context clues, and try to avoid repeating the same things. The user that will be chatting with you is "{USER_NAME}".'
 
 NF4_CONF = BitsAndBytesConfig(
    load_in_4bit=True,
@@ -38,7 +38,9 @@ def check_gpu() -> None:
     print("GPU is available" if torch.cuda.is_available() else "GPU is not available")
 
 def collect_user_input() -> str:
+    cursor.show()
     usr_input: str = str(input(USER_INPUT_TEXT))
+    cursor.hide()
     return usr_input
 
 def argument_init() -> argparse.ArgumentParser:
@@ -74,11 +76,8 @@ if __name__ == "__main__":
     history: str = EXAMPLE_DIALOGUE
 
     while True:
-        cursor.show()
         usr_input = collect_user_input()
         if usr_input == "xlxquit": break
-
-        cursor.hide()
 
         chat = f"## History:\n{history}\n## Input:\n{INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
         
