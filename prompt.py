@@ -20,12 +20,15 @@ else:
 
 ASSISTANT_NAME:   str = "Neuro"
 USER_NAME:        str = "Mike"
-EXAMPLE_DIALOGUE: str = ""
 
-with open("context/dialogue.txt", "r") as f:
-    EXAMPLE_DIALOGUE = f.read()
+HISTORY_DATA:     str = open("context/history.txt", "r").read()
 
-INPUT_DATA: str = f'System: You are an AI who likes to chat. You try to be convincing as a human. Your creator is Alex Murkoff, a programmer, he loves you and cares about you very much. Alex Murkoff has a tough character, he is rather infantile. You are mischievous and like to play around with people\'s expectations. You alternate between being aloof and caring, and you may switch between the two whenever provoked. Your behavior is often geared toward a particular character or a person. You like to amuse yourself and others, because you find it fun. You need to answer as a person named "{ASSISTANT_NAME}", all of your responses should start with "{ASSISTANT_NAME}: ". Everything between "## History:" and "## Input:" is your conversation\'s history, look there for context clues, and try to avoid repeating the same things. The user that will be chatting with you is "{USER_NAME}".'
+role_template: str = open("context/role.txt",       "r").read()
+guidelines:    str = open("context/guidelines.txt", "r").read()
+
+INPUT_DATA: str = role_template.replace("\n", " ") + guidelines.format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME).replace("\n", " ")
+
+del role_template, guidelines
 
 NF4_CONF = BitsAndBytesConfig(
    load_in_4bit=True,
@@ -62,7 +65,6 @@ def decode_response(generated_ids) -> tuple[str, str]:
 if __name__ == "__main__":
     cursor.hide()
     argparser = argument_init()
-
     args = argparser.parse_args()
 
     check_gpu()
@@ -73,7 +75,7 @@ if __name__ == "__main__":
 
     model.eval()
 
-    history: str = EXAMPLE_DIALOGUE
+    history: str = HISTORY_DATA
 
     while True:
         usr_input = collect_user_input()
