@@ -84,7 +84,7 @@ if __name__ == "__main__":
         chat = f"## History:\n{history}\n## Input:\n{INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
         
         model_inputs = tokenizer([chat], return_tensors="pt").to("cuda")
-        generated_ids = model.generate(**model_inputs, max_length=4096, repetition_penalty=1.14)
+        generated_ids = model.generate(**model_inputs, max_length=4096, repetition_penalty=1.16)
         response, index = decode_response(generated_ids)
 
         history += f"User: {usr_input}\n{ASSISTANT_NAME}: {index}\n"
