@@ -18,8 +18,8 @@ else:
     USER_INPUT_TEXT: str = "> "
     RESPONSE_META:   str = ""
 
-ASSISTANT_NAME:   str = "Neuro"
-USER_NAME:        str = "Mike"
+ASSISTANT_NAME:   str = "Remi"
+USER_NAME:        str = "Alex"
 
 HISTORY_DATA:     str = open("context/history.txt", "r").read()
 
