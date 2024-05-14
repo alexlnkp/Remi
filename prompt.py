@@ -21,7 +21,7 @@ else:
 ASSISTANT_NAME:   str = "Remi"
 USER_NAME:        str = "Alex"
 
-HISTORY_DATA:     str = open("context/history.txt", "r").read()
+HISTORY_DATA:     str = open("context/history.txt", "r").read().format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME)
 
 role_template: str = open("context/role.txt",       "r").read()
 guidelines:    str = open("context/guidelines.txt", "r").read()
