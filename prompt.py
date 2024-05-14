@@ -10,15 +10,13 @@ import argparse
 colorama_is_available: bool = importlib.util.find_spec("colorama") is not None
 if colorama_is_available:
     from colorama import Fore, Back, Style, init as colorama_init # type: ignore
-    colorama_init()
+    colorama_init(autoreset=True)
     USER_INPUT_TEXT: str = f"{Style.DIM}{Fore.BLUE}>{Style.RESET_ALL} "
     RESPONSE_META:   str = f"{Style.BRIGHT}{Fore.LIGHTRED_EX}"
-    RESPONSE_END:    str = f"{Style.RESET_ALL}"
 else:
     print("Colorama is not available, will not use fancy output text... :(")
     USER_INPUT_TEXT: str = "> "
     RESPONSE_META:   str = ""
-    RESPONSE_END:    str = ""
 
 ASSISTANT_NAME:   str = "Neuro"
 USER_NAME:        str = "Mike"
@@ -67,8 +65,8 @@ if __name__ == "__main__":
 
     check_gpu()
 
-    model = AutoModelForCausalLM.from_pretrained("/home/alex/Desktop/LL7M", device_map="auto", quantization_config=NF4_CONF)
-    tokenizer = AutoTokenizer.from_pretrained("/home/alex/Desktop/LL7M", padding_side="left")
+    model = AutoModelForCausalLM.from_pretrained("JosephusCheung/LL7M", device_map="auto", quantization_config=NF4_CONF)
+    tokenizer = AutoTokenizer.from_pretrained("JosephusCheung/LL7M", padding_side="left")
     clear_terminal()
 
     model.eval()
@@ -91,7 +89,7 @@ if __name__ == "__main__":
         history += f"User: {usr_input}\n{ASSISTANT_NAME}: {index}\n"
 
         if not args.debug:
-            print(RESPONSE_META + index.strip() + RESPONSE_END + '\n')
+            print(RESPONSE_META + index.strip() + '\n')
             continue
         
         print(response)
