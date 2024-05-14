@@ -4,6 +4,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import regex as re
 import os
 import importlib.util
+import cursor
 import argparse
 
 colorama_is_available: bool = importlib.util.find_spec("colorama") is not None
@@ -59,6 +60,7 @@ def decode_response(generated_ids) -> tuple[str, str]:
     
 
 if __name__ == "__main__":
+    cursor.hide()
     argparser = argument_init()
 
     args = argparser.parse_args()
@@ -74,8 +76,11 @@ if __name__ == "__main__":
     history: str = EXAMPLE_DIALOGUE
 
     while True:
+        cursor.show()
         usr_input = collect_user_input()
         if usr_input == "xlxquit": break
+
+        cursor.hide()
 
         chat = f"## History:\n{history}\n## Input:\n{INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
         
@@ -90,3 +95,5 @@ if __name__ == "__main__":
             continue
         
         print(response)
+
+        
