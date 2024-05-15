@@ -19,9 +19,14 @@ USER_NAME: str = "Alex"
 role_template: str = open("context/role.txt", "r").read()
 guidelines: str = open("context/guidelines.txt", "r").read()
 
-INPUT_DATA: str = role_template.replace("\n", " ") + guidelines.format(
-    ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME
-).replace("\n", " ")
+INPUT_DATA: str = (
+    role_template.replace("\n", " ")
+    + " "
+    + guidelines.format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME).replace(
+        "\n", " "
+    )
+)
+
 
 del role_template, guidelines
 
@@ -41,7 +46,7 @@ if __name__ == "__main__":
         (
             open(args.history, "r")
             .read()
-            .format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME)
+            .format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME="User")
         )
         + "\n"
         if args.history

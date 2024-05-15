@@ -93,6 +93,6 @@ def decode_response(
     """
     response: str = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
     index: str = re.findall(r"{}: (.*)".format(assistant_name), response)[-1]
-    if re.match(r'(.*)". Try to continue the conversation(.*)', index):
+    if re.match(r'(.*)". Continue the conversation accordingly(.*)', index):
         index = re.findall(r"## Response:\n(.*)", response)[-1]
     return response, index
