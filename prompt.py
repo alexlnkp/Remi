@@ -3,6 +3,7 @@
 from infer.utils import (
     argument_init,
     check_gpu,
+    clear_cuda_cache,
     clear_terminal,
     collect_user_input,
     decode_response,
@@ -14,12 +15,6 @@ USER_INPUT_TEXT, RESPONSE_META = get_uinput_and_response_format()
 
 ASSISTANT_NAME: str = "Remi"
 USER_NAME: str = "Alex"
-
-HISTORY_DATA: str = (
-    open("context/history.txt", "r")
-    .read()
-    .format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME)
-)
 
 role_template: str = open("context/role.txt", "r").read()
 guidelines: str = open("context/guidelines.txt", "r").read()
@@ -42,7 +37,16 @@ if __name__ == "__main__":
 
     model.eval()
 
-    history: str = HISTORY_DATA if not args.ignore_history else ""
+    history: str = (
+        (
+            open(args.history, "r")
+            .read()
+            .format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME)
+        )
+        + "\n"
+        if args.history
+        else ""
+    )
 
     while True:
         usr_input: str = collect_user_input(USER_INPUT_TEXT)
@@ -50,12 +54,14 @@ if __name__ == "__main__":
             break
 
         chat: str = (
-            f"## History:\n{history}\n## Input:\n{INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
+            f"## History:\n{history}\n## Input:\nSystem: {INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
         )
 
-        model_inputs = tokenizer([chat], return_tensors="pt").to(
-            "cuda" if cuda_available else "cpu"
-        )
+        model_inputs = tokenizer(
+            [chat],
+            return_tensors="pt",
+        ).to("cuda" if cuda_available else "cpu")
+
         generated_ids = model.generate(
             **model_inputs, max_length=4096, repetition_penalty=1.16
         )
@@ -63,7 +69,10 @@ if __name__ == "__main__":
 
         history += f"User: {usr_input}\n{ASSISTANT_NAME}: {index}\n"
 
-        if not args.debug:
+        clear_cuda_cache()
+        del model_inputs, generated_ids
+
+        if not args.debug and usr_input != "fuck":
             print(RESPONSE_META + index.strip() + "\n")
             continue
 
