@@ -1,30 +1,16 @@
 #!.venv/bin/python
-import importlib.util
-
-import cursor
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from infer.utils import (
-    NF4_CONF,
     argument_init,
     check_gpu,
     clear_terminal,
     collect_user_input,
     decode_response,
+    get_model_and_tokenizer,
+    get_uinput_and_response_format,
 )
 
-colorama_is_available: bool = importlib.util.find_spec("colorama") is not None
-if colorama_is_available:
-    from colorama import Fore, Style
-    from colorama import init as colorama_init  # type: ignore
-
-    colorama_init(autoreset=True)
-    USER_INPUT_TEXT: str = f"{Style.DIM}{Fore.BLUE}>{Style.RESET_ALL} "
-    RESPONSE_META: str = f"{Style.BRIGHT}{Fore.LIGHTRED_EX}"
-else:
-    print("Colorama is not available, will not use fancy output text... :(")
-    USER_INPUT_TEXT: str = "> "
-    RESPONSE_META: str = ""
+USER_INPUT_TEXT, RESPONSE_META = get_uinput_and_response_format()
 
 ASSISTANT_NAME: str = "Remi"
 USER_NAME: str = "Alex"
@@ -45,32 +31,31 @@ INPUT_DATA: str = role_template.replace("\n", " ") + guidelines.format(
 del role_template, guidelines
 
 if __name__ == "__main__":
-    cursor.hide()
     argparser = argument_init()
     args = argparser.parse_args()
 
-    check_gpu()
+    cuda_available: bool = check_gpu()
+    print("Cuda available" if cuda_available else "Cuda not available")
 
-    model = AutoModelForCausalLM.from_pretrained(
-        "JosephusCheung/LL7M", device_map="auto", quantization_config=NF4_CONF
-    )
-    tokenizer = AutoTokenizer.from_pretrained(
-        "JosephusCheung/LL7M", padding_side="left"
-    )
+    model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
     clear_terminal()
 
     model.eval()
 
-    history: str = HISTORY_DATA
+    history: str = HISTORY_DATA if not args.ignore_history else ""
 
     while True:
-        usr_input = collect_user_input(USER_INPUT_TEXT)
+        usr_input: str = collect_user_input(USER_INPUT_TEXT)
         if usr_input == "xlxquit":
             break
 
-        chat = f"## History:\n{history}\n## Input:\n{INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
+        chat: str = (
+            f"## History:\n{history}\n## Input:\n{INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
+        )
 
-        model_inputs = tokenizer([chat], return_tensors="pt").to("cuda")
+        model_inputs = tokenizer([chat], return_tensors="pt").to(
+            "cuda" if cuda_available else "cpu"
+        )
         generated_ids = model.generate(
             **model_inputs, max_length=4096, repetition_penalty=1.16
         )
