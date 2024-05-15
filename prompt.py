@@ -35,6 +35,7 @@ if __name__ == "__main__":
     args = argparser.parse_args()
 
     cuda_available: bool = check_gpu()
+    print("Cuda available" if cuda_available else "Cuda not available")
 
     model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
     clear_terminal()

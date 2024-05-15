@@ -47,11 +47,7 @@ def get_uinput_and_response_format():
 
 
 def check_gpu() -> bool:
-    if torch.cuda.is_available():
-        print("GPU is available")
-        return True
-    print("GPU is not available")
-    return False
+    return torch.cuda.is_available()
 
 
 def collect_user_input(user_input_text: str) -> str:
