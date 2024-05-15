@@ -1,10 +1,11 @@
 import argparse
+import importlib.util
 import os
 
 import cursor
 import regex as re
 import torch
-from transformers import BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 NF4_CONF = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -14,8 +15,37 @@ NF4_CONF = BitsAndBytesConfig(
 )
 
 
-def check_gpu() -> None:
-    print("GPU is available" if torch.cuda.is_available() else "GPU is not available")
+def get_model_and_tokenizer(model_name: str):
+    cursor.hide()
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, device_map="auto", quantization_config=NF4_CONF
+    )
+    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+
+    return model, tokenizer
+
+
+def get_uinput_and_response_format():
+    if importlib.util.find_spec("colorama") is not None:
+        from colorama import Fore, Style  # type: ignore
+        from colorama import init as colorama_init  # type: ignore
+
+        colorama_init(autoreset=True)
+        USER_INPUT_TEXT: str = f"{Style.DIM}{Fore.BLUE}>{Style.RESET_ALL} "
+        RESPONSE_META: str = f"{Style.BRIGHT}{Fore.LIGHTRED_EX}"
+    else:
+        print("Colorama is not available, will not use fancy output text... :(")
+        USER_INPUT_TEXT: str = "> "
+        RESPONSE_META: str = ""
+    return USER_INPUT_TEXT, RESPONSE_META
+
+
+def check_gpu() -> bool:
+    if torch.cuda.is_available():
+        print("GPU is available")
+        return True
+    print("GPU is not available")
+    return False
 
 
 def collect_user_input(user_input_text: str) -> str:
