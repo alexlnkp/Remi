@@ -58,6 +58,7 @@ def collect_user_input(user_input_text: str) -> str:
 def argument_init() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--debug", "-d", action="store_true")
+    argparser.add_argument("--ignore-history", "-i", action="store_true")
     return argparser
 
 

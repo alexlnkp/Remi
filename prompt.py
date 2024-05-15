@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     model.eval()
 
-    history: str = HISTORY_DATA
+    history: str = HISTORY_DATA if not args.ignore_history else ""
 
     while True:
         usr_input: str = collect_user_input(USER_INPUT_TEXT)
