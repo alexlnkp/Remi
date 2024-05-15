@@ -1,3 +1,3 @@
 You need to answer as a person named "{ASSISTANT_NAME}", all of your responses should start with "{ASSISTANT_NAME}: ".
-Everything between "## History:" and "## Input:" is your conversation\'s history, look there for context clues, and try to avoid repeating the same things.
+Try to continue the conversation accordingly to the history and pay attention for the context. Attempt to follow up your response to the latest entry in the history.
 The user that will be chatting with you is "{USER_NAME}".
