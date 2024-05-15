@@ -60,7 +60,7 @@ def collect_user_input(user_input_text: str) -> str:
 def argument_init() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser()
     argparser.add_argument("--debug", "-d", action="store_true")
-    argparser.add_argument("--ignore-history", "-i", action="store_true")
+    argparser.add_argument("--history", "-i", required=False, type=str, default="")
     return argparser
 
 
@@ -73,6 +73,10 @@ def clear_terminal() -> None:
     os.system("cls")
 
 
+def clear_cuda_cache() -> None:
+    torch.cuda.empty_cache()
+
+
 def decode_response(
     tokenizer: PreTrainedTokenizer, generated_ids: torch.Tensor, assistant_name: str
 ) -> Tuple[str, str]:
@@ -80,15 +84,15 @@ def decode_response(
     Decode the response from the model and extract the response index.
 
     Args:
-        tokenizer (transformers.PreTrainedTokenizer): The tokenizer used to decode the response.
-        generated_ids (torch.Tensor): The generated IDs from the model.
-        assistant_name (str): The name of the assistant.
+        `tokenizer`: `PreTrainedTokenizer` - The tokenizer used to decode the response.
+        `generated_ids`: `torch.Tensor` - The generated IDs from the model.
+        `assistant_name`: `str` - The name of the assistant.
 
     Returns:
         Tuple[str, str]: A tuple containing the decoded response and the response index.
     """
     response: str = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
     index: str = re.findall(r"{}: (.*)".format(assistant_name), response)[-1]
-    if re.match(r'(.*)"## History:" and "## Input:"(.*)', index):
+    if re.match(r'(.*)". Try to continue the conversation(.*)', index):
         index = re.findall(r"## Response:\n(.*)", response)[-1]
     return response, index
