@@ -24,7 +24,7 @@ Remi is a chatbot that utilizes a pre-trained language model, LL7M, to provide e
 
 Your contributions will be met with gratitude and will help greatly! If **You** would like to help Remi, please fork the repository and submit a pull request.
 
-### TODO:
+### TODO
 
 - General:
 - [ ] Fine-tune the LLM to directly improve quality of the responses
@@ -48,4 +48,4 @@ This project is licensed under the **MIT** License - see the `LICENSE` file for 
 
 ## Contact
 
-For any questions or concerns, please contact the project maintainers at 413x1nkp@gmail.com.
+For any questions or concerns, please contact the project maintainers at [413x1nkp@gmail.com](mailto:413x1nkp@gmail.com).
