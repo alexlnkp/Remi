@@ -1,7 +1,7 @@
 import argparse
 import importlib.util
 import os
-from typing import Tuple
+from typing import Any, Tuple
 
 import cursor
 import regex as re
@@ -11,6 +11,7 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     PreTrainedTokenizer,
+    PreTrainedTokenizerFast,
 )
 
 NF4_CONF = BitsAndBytesConfig(
@@ -21,8 +22,13 @@ NF4_CONF = BitsAndBytesConfig(
 )
 
 
-def get_model_and_tokenizer(model_name: str):
+def hide_cursor() -> None:
     cursor.hide()
+
+
+def get_model_and_tokenizer(
+    model_name: str,
+) -> tuple[Any, PreTrainedTokenizer | PreTrainedTokenizerFast]:
     model = AutoModelForCausalLM.from_pretrained(
         model_name, device_map="auto", quantization_config=NF4_CONF
     )
@@ -31,7 +37,7 @@ def get_model_and_tokenizer(model_name: str):
     return model, tokenizer
 
 
-def get_uinput_and_response_format():
+def get_uinput_and_response_format() -> tuple[str, str]:
     if importlib.util.find_spec("colorama") is not None:
         from colorama import Fore, Style  # type: ignore
         from colorama import init as colorama_init  # type: ignore

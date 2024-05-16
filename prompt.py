@@ -8,6 +8,7 @@ from infer.utils import (
     collect_user_input,
     decode_response,
     get_model_and_tokenizer,
+    hide_cursor,
     get_uinput_and_response_format,
 )
 
@@ -37,6 +38,7 @@ if __name__ == "__main__":
     cuda_available: bool = check_gpu()
     print("Cuda available" if cuda_available else "Cuda not available")
 
+    hide_cursor()
     model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
     clear_terminal()
 
