@@ -2,19 +2,14 @@
 
 from typing import List
 
-from peft import LoraConfig, TaskType, get_peft_model, PeftModelForCausalLM
+from peft import LoraConfig, PeftModelForCausalLM, TaskType, get_peft_model
 from sklearn.model_selection import train_test_split
 from torch import device as torch_device
-from torch.optim import Optimizer
-from torch.optim import AdamW
+from torch.utils.data import DataLoader
+from transformers import BatchEncoding, Trainer, TrainingArguments
 
 from ft.lib import grab_dataset, preprocess_dataset
-from ft.train import evaluate, train_epoch, DataLoader
-from infer.utils import (
-    check_gpu,
-    get_model_and_tokenizer,
-)
-from transformers import BatchEncoding
+from infer.utils import check_gpu, get_model_and_tokenizer
 
 DATASET_PATH = "ft/xlx_ft_dataset"
 SEPARATOR_CHAR = "-----------------------------------------------------------------\n"
@@ -48,13 +43,17 @@ LORA_CONF = LoraConfig(
 
 if __name__ == "__main__":
     cuda_available: bool = check_gpu()
-    device: torch_device = "cuda" if cuda_available else "cpu"
-    print("Cuda available" if cuda_available else "Cuda not available")
+    device: torch_device = "cpu"
+    if cuda_available:
+        print("Cuda available")
+        device = "cuda"
+    else:
+        print("Cuda not available")
 
-    datasets_contents: List[str] = grab_dataset(DATASET_PATH)
-    datasets: List[List[str]] = preprocess_dataset(datasets_contents, SEPARATOR_CHAR)
-
-    train_dataset, val_dataset = train_test_split(datasets, test_size=TEST_SIZE)
+    train_dataset, val_dataset = train_test_split(
+        preprocess_dataset(grab_dataset(DATASET_PATH), SEPARATOR_CHAR),
+        test_size=TEST_SIZE,
+    )
 
     model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
 
@@ -67,14 +66,35 @@ if __name__ == "__main__":
 
     model: PeftModelForCausalLM = get_peft_model(model, LORA_CONF)
 
-    train_data: DataLoader = DataLoader([train_inputs], batch_size=BATCH_SIZE, shuffle=True)
-    val_data: DataLoader = DataLoader([val_inputs], batch_size=BATCH_SIZE, shuffle=False)
+    train_data: DataLoader = DataLoader(
+        train_inputs, batch_size=BATCH_SIZE, shuffle=True
+    )
+    val_data: DataLoader = DataLoader(val_inputs, batch_size=BATCH_SIZE, shuffle=False)
 
-    optimizer: Optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
+    training_args = TrainingArguments(
+        output_dir="./ft/results",
+        num_train_epochs=EPOCHS,
+        per_device_train_batch_size=BATCH_SIZE,
+        logging_dir="./ft/logs",
+        logging_steps=10,
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        learning_rate=LEARNING_RATE,
+        save_steps=500,
+        save_total_limit=2,
+        fp16=cuda_available,
+        gradient_accumulation_steps=4,
+        load_best_model_at_end=True,
+    )
 
-    for epoch in range(EPOCHS):
-        train_loss: float = train_epoch(model, train_data, optimizer, device)
-        val_loss: float = evaluate(model, val_data, device)
-        print(
-            f"Epoch {epoch + 1}/{EPOCHS} - Train loss: {train_loss:.4f} - Val loss: {val_loss:.4f}"
-        )
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        tokenizer=tokenizer,
+    )
+
+    trainer.train()
+
+    model.save_pretrained("help")
