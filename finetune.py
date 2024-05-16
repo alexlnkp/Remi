@@ -2,7 +2,13 @@
 
 from typing import List
 
-from peft import LoraConfig, PeftModelForCausalLM, TaskType, get_peft_model
+from peft import (
+    LoraConfig,
+    PeftModelForCausalLM,
+    TaskType,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+)
 from sklearn.model_selection import train_test_split
 from torch import device as torch_device
 from torch.utils.data import DataLoader
@@ -29,9 +35,9 @@ SEPARATOR_CHAR = "--------------------------------------------------------------
 
 # region Hyperparams
 
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 2.5e-5
 TEST_SIZE = 0.1
-BATCH_SIZE = 1
+BATCH_SIZE = 8
 EPOCHS = 10
 MAX_SEQUENCE_LENGTH = 2048
 
@@ -80,39 +86,63 @@ if __name__ == "__main__":
 
     _model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
 
-    tokenizer.pad_token_id = 0
+    _model.gradient_checkpointing_enable()
+    _model = prepare_model_for_kbit_training(_model)
+
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
 
     model: PeftModelForCausalLM = get_peft_model(_model, LORA_CONF)
 
-    x_train_encodings: BatchEncoding = tokenizer.batch_encode_plus(
-        x_train,
-        return_tensors="pt",
-        max_length=MAX_SEQUENCE_LENGTH,
-        padding="longest",
-        truncation=True,
-    ).to(device)
-    x_test_encodings: BatchEncoding = tokenizer(
-        x_test,
-        return_tensors="pt",
-        max_length=MAX_SEQUENCE_LENGTH,
-        padding="longest",
-        truncation=True,
-    ).to(device)
+    x_train_encodings: BatchEncoding = (
+        tokenizer.batch_encode_plus(
+            x_train,
+            return_tensors="pt",
+            max_length=MAX_SEQUENCE_LENGTH,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
+    x_test_encodings: BatchEncoding = (
+        tokenizer(
+            x_test,
+            return_tensors="pt",
+            max_length=MAX_SEQUENCE_LENGTH,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
 
-    y_train_encodings: BatchEncoding = tokenizer(
-        y_train,
-        return_tensors="pt",
-        max_length=MAX_SEQUENCE_LENGTH,
-        padding="longest",
-        truncation=True,
-    ).to(device)
-    y_test_encodings: BatchEncoding = tokenizer(
-        y_test,
-        return_tensors="pt",
-        max_length=MAX_SEQUENCE_LENGTH,
-        padding="longest",
-        truncation=True,
-    ).to(device)
+    y_train_encodings: BatchEncoding = (
+        tokenizer(
+            y_train,
+            return_tensors="pt",
+            max_length=MAX_SEQUENCE_LENGTH,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
+    y_test_encodings: BatchEncoding = (
+        tokenizer(
+            y_test,
+            return_tensors="pt",
+            max_length=MAX_SEQUENCE_LENGTH,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
+    x_train_encodings["input_ids"] = x_train_encodings["input_ids"].permute(1, 0)
+    y_train_encodings["input_ids"] = y_train_encodings["input_ids"].permute(1, 0)
+    x_test_encodings["input_ids"] = x_test_encodings["input_ids"].permute(1, 0)
+    y_test_encodings["input_ids"] = y_test_encodings["input_ids"].permute(1, 0)
 
     # x_train_encodings = y_train_encodings = 10
     train_data: RemiDataset = RemiDataset(x_train_encodings, y_train_encodings)
@@ -126,10 +156,9 @@ if __name__ == "__main__":
     training_args = TrainingArguments(
         output_dir="./ft/results",
         num_train_epochs=EPOCHS,
-        do_train=True,
-        do_eval=True,
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
+        gradient_checkpointing=True,
         logging_dir="./ft/logs",
         logging_steps=10,
         evaluation_strategy="epoch",
