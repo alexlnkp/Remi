@@ -6,9 +6,22 @@ from peft import LoraConfig, PeftModelForCausalLM, TaskType, get_peft_model
 from sklearn.model_selection import train_test_split
 from torch import device as torch_device
 from torch.utils.data import DataLoader
-from transformers import BatchEncoding, Trainer, TrainingArguments
+from transformers import (
+    BatchEncoding,
+    LlamaForCausalLM,
+    LlamaTokenizer,
+    Trainer,
+    TrainingArguments,
+)
 
-from ft.lib import grab_dataset, preprocess_dataset
+from ft.lib import (
+    RemiDataset,
+    dictionarize_dataset,
+    get_input_and_target_list,
+    grab_dataset,
+    merge_datasets,
+    preprocess_dataset,
+)
 from infer.utils import check_gpu, get_model_and_tokenizer
 
 DATASET_PATH = "ft/xlx_ft_dataset"
@@ -17,9 +30,10 @@ SEPARATOR_CHAR = "--------------------------------------------------------------
 # region Hyperparams
 
 LEARNING_RATE = 1e-4
-TEST_SIZE = 0.2
+TEST_SIZE = 0.1
 BATCH_SIZE = 1
 EPOCHS = 10
+MAX_SEQUENCE_LENGTH = 2048
 
 # endregion
 
@@ -43,38 +57,79 @@ LORA_CONF = LoraConfig(
 
 if __name__ == "__main__":
     cuda_available: bool = check_gpu()
-    device: torch_device = "cpu"
-    if cuda_available:
-        print("Cuda available")
-        device = "cuda"
-    else:
-        print("Cuda not available")
 
-    train_dataset, val_dataset = train_test_split(
-        preprocess_dataset(grab_dataset(DATASET_PATH), SEPARATOR_CHAR),
-        test_size=TEST_SIZE,
+    print(f"Cuda {'not ' if not cuda_available else ''}available")
+    device: torch_device = "cuda" if cuda_available else "cpu"
+
+    f_dataset: List[str] = merge_datasets(
+        preprocess_dataset(grab_dataset(DATASET_PATH), SEPARATOR_CHAR)
     )
 
-    model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
+    x_dataset, y_dataset = get_input_and_target_list(dictionarize_dataset(f_dataset))
 
-    train_inputs: BatchEncoding = tokenizer(
-        train_dataset, is_split_into_words=True, return_tensors="pt"
-    ).to(device)
-    val_inputs: BatchEncoding = tokenizer(
-        val_dataset, is_split_into_words=True, return_tensors="pt"
-    ).to(device)
+    x_train: List[str] = []
+    x_test: List[str] = []
+    y_train: List[str] = []
+    y_test: List[str] = []
 
-    model: PeftModelForCausalLM = get_peft_model(model, LORA_CONF)
-
-    train_data: DataLoader = DataLoader(
-        train_inputs, batch_size=BATCH_SIZE, shuffle=True
+    x_train, x_test, y_train, y_test = train_test_split(
+        x_dataset, y_dataset, test_size=TEST_SIZE, random_state=0
     )
-    val_data: DataLoader = DataLoader(val_inputs, batch_size=BATCH_SIZE, shuffle=False)
+    _model: LlamaForCausalLM
+    tokenizer: LlamaTokenizer
+
+    _model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
+
+    tokenizer.pad_token_id = 0
+
+    model: PeftModelForCausalLM = get_peft_model(_model, LORA_CONF)
+
+    x_train_encodings: BatchEncoding = tokenizer.batch_encode_plus(
+        x_train,
+        return_tensors="pt",
+        max_length=MAX_SEQUENCE_LENGTH,
+        padding="longest",
+        truncation=True,
+    ).to(device)
+    x_test_encodings: BatchEncoding = tokenizer(
+        x_test,
+        return_tensors="pt",
+        max_length=MAX_SEQUENCE_LENGTH,
+        padding="longest",
+        truncation=True,
+    ).to(device)
+
+    y_train_encodings: BatchEncoding = tokenizer(
+        y_train,
+        return_tensors="pt",
+        max_length=MAX_SEQUENCE_LENGTH,
+        padding="longest",
+        truncation=True,
+    ).to(device)
+    y_test_encodings: BatchEncoding = tokenizer(
+        y_test,
+        return_tensors="pt",
+        max_length=MAX_SEQUENCE_LENGTH,
+        padding="longest",
+        truncation=True,
+    ).to(device)
+
+    # x_train_encodings = y_train_encodings = 10
+    train_data: RemiDataset = RemiDataset(x_train_encodings, y_train_encodings)
+
+    # x_test_encodings = y_test_encodings = 2
+    val_data: RemiDataset = RemiDataset(x_test_encodings, y_test_encodings)
+
+    train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+    val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=False)
 
     training_args = TrainingArguments(
         output_dir="./ft/results",
         num_train_epochs=EPOCHS,
+        do_train=True,
+        do_eval=True,
         per_device_train_batch_size=BATCH_SIZE,
+        per_device_eval_batch_size=BATCH_SIZE,
         logging_dir="./ft/logs",
         logging_steps=10,
         evaluation_strategy="epoch",
@@ -83,6 +138,7 @@ if __name__ == "__main__":
         save_steps=500,
         save_total_limit=2,
         fp16=cuda_available,
+        use_cpu=not cuda_available,
         gradient_accumulation_steps=4,
         load_best_model_at_end=True,
     )
@@ -90,8 +146,8 @@ if __name__ == "__main__":
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
+        train_dataset=train_data,
+        eval_dataset=val_data,
         tokenizer=tokenizer,
     )
 
