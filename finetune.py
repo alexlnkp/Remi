@@ -2,18 +2,19 @@
 
 from typing import List
 
-from peft import LoraConfig, TaskType, get_peft_model
+from peft import LoraConfig, TaskType, get_peft_model, PeftModelForCausalLM
 from sklearn.model_selection import train_test_split
+from torch import device as torch_device
+from torch.optim import Optimizer
 from torch.optim import AdamW
-from torch.utils.data import DataLoader
 
 from ft.lib import grab_dataset, preprocess_dataset
+from ft.train import evaluate, train_epoch, DataLoader
 from infer.utils import (
     check_gpu,
-    clear_cuda_cache,
-    decode_response,
     get_model_and_tokenizer,
 )
+from transformers import BatchEncoding
 
 DATASET_PATH = "ft/xlx_ft_dataset"
 SEPARATOR_CHAR = "-----------------------------------------------------------------\n"
@@ -22,6 +23,8 @@ SEPARATOR_CHAR = "--------------------------------------------------------------
 
 LEARNING_RATE = 1e-4
 TEST_SIZE = 0.2
+BATCH_SIZE = 1
+EPOCHS = 10
 
 # endregion
 
@@ -45,6 +48,7 @@ LORA_CONF = LoraConfig(
 
 if __name__ == "__main__":
     cuda_available: bool = check_gpu()
+    device: torch_device = "cuda" if cuda_available else "cpu"
     print("Cuda available" if cuda_available else "Cuda not available")
 
     datasets_contents: List[str] = grab_dataset(DATASET_PATH)
@@ -54,16 +58,23 @@ if __name__ == "__main__":
 
     model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
 
-    train_inputs = tokenizer(
-        train_dataset, is_split_into_words=True, truncation=True, return_tensors="pt"
-    ).to("cuda" if cuda_available else "cpu")
-    val_inputs = tokenizer(
-        val_dataset, is_split_into_words=True, truncation=True, return_tensors="pt"
-    ).to("cuda" if cuda_available else "cpu")
+    train_inputs: BatchEncoding = tokenizer(
+        train_dataset, is_split_into_words=True, return_tensors="pt"
+    ).to(device)
+    val_inputs: BatchEncoding = tokenizer(
+        val_dataset, is_split_into_words=True, return_tensors="pt"
+    ).to(device)
 
-    model = get_peft_model(model, LORA_CONF)
+    model: PeftModelForCausalLM = get_peft_model(model, LORA_CONF)
 
-    train_data = DataLoader(train_inputs, batch_size=16, shuffle=True)
-    val_data = DataLoader(val_inputs, batch_size=16, shuffle=False)
+    train_data: DataLoader = DataLoader([train_inputs], batch_size=BATCH_SIZE, shuffle=True)
+    val_data: DataLoader = DataLoader([val_inputs], batch_size=BATCH_SIZE, shuffle=False)
 
-    optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
+    optimizer: Optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
+
+    for epoch in range(EPOCHS):
+        train_loss: float = train_epoch(model, train_data, optimizer, device)
+        val_loss: float = evaluate(model, val_data, device)
+        print(
+            f"Epoch {epoch + 1}/{EPOCHS} - Train loss: {train_loss:.4f} - Val loss: {val_loss:.4f}"
+        )
