@@ -1,0 +1,8 @@
+torch
+tqdm
+transformers
+protobuf
+accelerate
+bitsandbytes
+peft
+scikit-learn
