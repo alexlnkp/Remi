@@ -8,8 +8,8 @@ from infer.utils import (
     collect_user_input,
     decode_response,
     get_model_and_tokenizer,
-    hide_cursor,
     get_uinput_and_response_format,
+    hide_cursor,
 )
 
 USER_INPUT_TEXT, RESPONSE_META = get_uinput_and_response_format()
