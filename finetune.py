@@ -2,23 +2,11 @@
 
 from typing import List
 
-from peft import (
-    LoraConfig,
-    PeftModelForCausalLM,
-    TaskType,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-)
+from peft import LoraConfig, TaskType
 from sklearn.model_selection import train_test_split
 from torch import device as torch_device
 from torch.utils.data import DataLoader
-from transformers import (
-    BatchEncoding,
-    LlamaForCausalLM,
-    LlamaTokenizer,
-    Trainer,
-    TrainingArguments,
-)
+from transformers import Trainer, TrainingArguments
 
 from ft.lib import (
     RemiDataset,
@@ -26,9 +14,11 @@ from ft.lib import (
     get_input_and_target_list,
     grab_dataset,
     merge_datasets,
+    prepare_encodings,
+    prepare_tokenizer_and_peft_model,
     preprocess_dataset,
 )
-from infer.utils import check_gpu, get_model_and_tokenizer
+from infer.utils import check_gpu
 
 DATASET_PATH = "ft/xlx_ft_dataset"
 SEPARATOR_CHAR = "-----------------------------------------------------------------\n"
@@ -81,68 +71,21 @@ if __name__ == "__main__":
     x_train, x_test, y_train, y_test = train_test_split(
         x_dataset, y_dataset, test_size=TEST_SIZE, random_state=0
     )
-    _model: LlamaForCausalLM
-    tokenizer: LlamaTokenizer
+    tokenizer, model = prepare_tokenizer_and_peft_model(
+        "JosephusCheung/LL7M", LORA_CONF
+    )
 
-    _model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
-
-    _model.gradient_checkpointing_enable()
-    _model = prepare_model_for_kbit_training(_model)
-
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "right"
-
-    model: PeftModelForCausalLM = get_peft_model(_model, LORA_CONF)
-
-    x_train_encodings: BatchEncoding = (
-        tokenizer.batch_encode_plus(
+    x_train_encodings, x_test_encodings, y_train_encodings, y_test_encodings = (
+        prepare_encodings(
             x_train,
-            return_tensors="pt",
-            max_length=MAX_SEQUENCE_LENGTH,
-            padding="longest",
-            truncation=True,
-        )
-        .convert_to_tensors()
-        .to(device)
-    )
-    x_test_encodings: BatchEncoding = (
-        tokenizer(
             x_test,
-            return_tensors="pt",
-            max_length=MAX_SEQUENCE_LENGTH,
-            padding="longest",
-            truncation=True,
-        )
-        .convert_to_tensors()
-        .to(device)
-    )
-
-    y_train_encodings: BatchEncoding = (
-        tokenizer(
             y_train,
-            return_tensors="pt",
-            max_length=MAX_SEQUENCE_LENGTH,
-            padding="longest",
-            truncation=True,
-        )
-        .convert_to_tensors()
-        .to(device)
-    )
-    y_test_encodings: BatchEncoding = (
-        tokenizer(
             y_test,
-            return_tensors="pt",
-            max_length=MAX_SEQUENCE_LENGTH,
-            padding="longest",
-            truncation=True,
+            tokenizer,
+            device,
+            MAX_SEQUENCE_LENGTH,
         )
-        .convert_to_tensors()
-        .to(device)
     )
-    x_train_encodings["input_ids"] = x_train_encodings["input_ids"].permute(1, 0)
-    y_train_encodings["input_ids"] = y_train_encodings["input_ids"].permute(1, 0)
-    x_test_encodings["input_ids"] = x_test_encodings["input_ids"].permute(1, 0)
-    y_test_encodings["input_ids"] = y_test_encodings["input_ids"].permute(1, 0)
 
     # x_train_encodings = y_train_encodings = 10
     train_data: RemiDataset = RemiDataset(x_train_encodings, y_train_encodings)

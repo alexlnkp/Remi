@@ -4,7 +4,15 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import torch
-from transformers import BatchEncoding
+from peft import (
+    PeftConfig,
+    PeftModelForCausalLM,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+)
+from transformers import BatchEncoding, LlamaForCausalLM, LlamaTokenizer
+
+from infer.utils import get_model_and_tokenizer
 
 
 def grab_dataset(path: Path) -> List[str]:
@@ -186,3 +194,83 @@ class RemiDataset(torch.utils.data.Dataset):
             `int` - The length of the dataset.
         """
         return len(self.inputs.input_ids)
+
+
+def prepare_encodings(
+    x_train: List[str],
+    x_test: List[str],
+    y_train: List[str],
+    y_test: List[str],
+    tokenizer: LlamaTokenizer,
+    device: torch.device,
+    max_sequence_length: int = 2048,
+) -> tuple[BatchEncoding, BatchEncoding, BatchEncoding, BatchEncoding]:
+    x_train_encodings: BatchEncoding = (
+        tokenizer.batch_encode_plus(
+            x_train,
+            return_tensors="pt",
+            max_length=max_sequence_length,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
+    x_test_encodings: BatchEncoding = (
+        tokenizer(
+            x_test,
+            return_tensors="pt",
+            max_length=max_sequence_length,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
+
+    y_train_encodings: BatchEncoding = (
+        tokenizer(
+            y_train,
+            return_tensors="pt",
+            max_length=max_sequence_length,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
+    y_test_encodings: BatchEncoding = (
+        tokenizer(
+            y_test,
+            return_tensors="pt",
+            max_length=max_sequence_length,
+            padding="longest",
+            truncation=True,
+        )
+        .convert_to_tensors()
+        .to(device)
+    )
+    x_train_encodings["input_ids"] = x_train_encodings["input_ids"].permute(1, 0)
+    y_train_encodings["input_ids"] = y_train_encodings["input_ids"].permute(1, 0)
+    x_test_encodings["input_ids"] = x_test_encodings["input_ids"].permute(1, 0)
+    y_test_encodings["input_ids"] = y_test_encodings["input_ids"].permute(1, 0)
+
+    return x_train_encodings, x_test_encodings, y_train_encodings, y_test_encodings
+
+
+def prepare_tokenizer_and_peft_model(
+    model_path_or_name: str, peft_conf: PeftConfig
+) -> tuple[LlamaTokenizer, PeftModelForCausalLM]:
+    _model: LlamaForCausalLM
+    tokenizer: LlamaTokenizer
+
+    _model, tokenizer = get_model_and_tokenizer(model_path_or_name)
+
+    _model.gradient_checkpointing_enable()
+    _model = prepare_model_for_kbit_training(_model)
+
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
+
+    model: PeftModelForCausalLM = get_peft_model(_model, peft_conf)
+    return tokenizer, model
