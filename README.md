@@ -27,7 +27,7 @@ Your contributions will be met with gratitude and will help greatly! If **You** 
 ### TODO
 
 - General:
-- [ ] Fine-tune the LLM to directly improve quality of the responses
+- [x] Fine-tune the LLM to directly improve quality of the responses
 - [ ] Do some fancy prompt-engineering.
 
 - TTS related:
