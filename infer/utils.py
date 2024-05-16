@@ -11,7 +11,7 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
+    PreTrainedTokenizerFast
 )
 
 NF4_CONF = BitsAndBytesConfig(
