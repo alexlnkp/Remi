@@ -79,7 +79,7 @@ if __name__ == "__main__":
         ).to(device)
 
         generated_ids = model.generate(
-            **model_inputs, max_length=4096, repetition_penalty=1.16
+            **model_inputs, max_new_tokens=4096, repetition_penalty=1.16
         )
         response, index = decode_response(tokenizer, generated_ids, ASSISTANT_NAME)
 
