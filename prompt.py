@@ -46,9 +46,10 @@ if __name__ == "__main__":
     model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
     clear_terminal()
 
-    model.load_adapter("413x1nkp/LL7M-Remi", adapter_name="remi")
-    model.set_adapter("remi")
-    model.enable_adapters()
+    if not args.no_adapter:
+        model.load_adapter("413x1nkp/LL7M-Remi", adapter_name="remi")
+        model.set_adapter("remi")
+        model.enable_adapters()
 
     model.eval()
 
