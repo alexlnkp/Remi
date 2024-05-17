@@ -1,7 +1,7 @@
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 from peft import (
@@ -12,17 +12,9 @@ from peft import (
     get_peft_model,
     prepare_model_for_kbit_training,
 )
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    BatchEncoding,
-    LlamaForCausalLM,
-    LlamaTokenizer,
-    PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
-)
+from transformers import BatchEncoding, LlamaForCausalLM, LlamaTokenizer
 
-from infer.utils import NF4_CONF
+from infer.utils import get_model_and_tokenizer
 
 LORA_CONF = LoraConfig(
     r=8,
@@ -37,8 +29,8 @@ LORA_CONF = LoraConfig(
     ],
     bias="none",
     task_type=TaskType.CAUSAL_LM,
-    # lora_alpha=32,
-    # lora_dropout=0.1,
+    lora_alpha=32,
+    lora_dropout=0.1,
 )
 
 
@@ -285,40 +277,13 @@ def prepare_encodings(
     return x_train_encodings, x_test_encodings, y_train_encodings, y_test_encodings
 
 
-def get_model_and_tokenizer_for_finetuning(
-    model_name: str,
-) -> tuple[Any, PreTrainedTokenizer | PreTrainedTokenizerFast]:
-    """
-    Get the model and tokenizer for finetuning.
-
-    Args:
-        `model_name`: `str` - The name of the model to load.
-
-    Returns:
-        `tuple[Any, PreTrainedTokenizer | PreTrainedTokenizerFast]` - The model and tokenizer.
-    """
-    # Load the model for causal language modeling
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name, device_map="auto", quantization_config=NF4_CONF
-    )
-    # Load the tokenizer for the model
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        padding_side="left",
-        # add_eos_token=True,  # Unneeded?
-        # add_bos_token=True,  # Check if model starts to spit out garbage with this
-    )
-
-    return model, tokenizer
-
-
 def prepare_tokenizer_and_peft_model(
     model_path_or_name: str, peft_conf: PeftConfig
 ) -> tuple[LlamaTokenizer, PeftModelForCausalLM]:
     _model: LlamaForCausalLM
     tokenizer: LlamaTokenizer
 
-    _model, tokenizer = get_model_and_tokenizer_for_finetuning(model_path_or_name)
+    _model, tokenizer = get_model_and_tokenizer(model_path_or_name)
 
     _model.gradient_checkpointing_enable()
     _model = prepare_model_for_kbit_training(_model)

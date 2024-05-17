@@ -27,8 +27,8 @@ SEPARATOR_CHAR = "--------------------------------------------------------------
 
 LEARNING_RATE = 2.5e-5
 TEST_SIZE = 0.1
-BATCH_SIZE = 8
-EPOCHS = 10
+BATCH_SIZE = 4
+EPOCHS = 20
 MAX_SEQUENCE_LENGTH = 2048
 
 # endregion
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=False)
 
     training_args = TrainingArguments(
-        output_dir="./ft/results",
+        output_dir="./ft/ckpt",
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
@@ -108,4 +108,4 @@ if __name__ == "__main__":
 
     trainer.train()
 
-    model.save_pretrained("help")
+    model.save_pretrained("remi")

@@ -1,5 +1,5 @@
 .venv
 .vscode
 *__pycache__*
-ft/results
+ft/ckpt
 ft/xlx_ft_dataset
