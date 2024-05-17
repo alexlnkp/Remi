@@ -3,7 +3,6 @@
 import torch
 
 from infer.utils import (
-    argument_init,
     check_gpu,
     clear_cuda_cache,
     clear_terminal,
@@ -12,6 +11,7 @@ from infer.utils import (
     get_model_and_tokenizer,
     get_uinput_and_response_format,
     hide_cursor,
+    infer_argument_init,
 )
 
 USER_INPUT_TEXT, RESPONSE_META = get_uinput_and_response_format()
@@ -34,7 +34,7 @@ INPUT_DATA: str = (
 del role_template, guidelines
 
 if __name__ == "__main__":
-    argparser = argument_init()
+    argparser = infer_argument_init()
     args = argparser.parse_args()
 
     cuda_available: bool = check_gpu()

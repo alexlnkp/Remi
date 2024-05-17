@@ -41,18 +41,20 @@ def get_model_and_tokenizer(
 
 
 def get_uinput_and_response_format() -> tuple[str, str]:
+    user_input_text: str = "> "
+    response_meta: str = ""
+
     if importlib.util.find_spec("colorama") is not None:
         from colorama import Fore, Style  # type: ignore
         from colorama import init as colorama_init  # type: ignore
 
         colorama_init(autoreset=True)
-        USER_INPUT_TEXT: str = f"{Style.DIM}{Fore.BLUE}>{Style.RESET_ALL} "
-        RESPONSE_META: str = f"{Style.BRIGHT}{Fore.LIGHTRED_EX}"
+        user_input_text = f"{Style.DIM}{Fore.BLUE}>{Style.RESET_ALL} "
+        response_meta = f"{Style.BRIGHT}{Fore.LIGHTRED_EX}"
     else:
         print("Colorama is not available, will not use fancy output text... :(")
-        USER_INPUT_TEXT: str = "> "
-        RESPONSE_META: str = ""
-    return USER_INPUT_TEXT, RESPONSE_META
+
+    return user_input_text, response_meta
 
 
 def check_gpu() -> bool:
@@ -66,11 +68,30 @@ def collect_user_input(user_input_text: str) -> str:
     return usr_input
 
 
-def argument_init() -> argparse.ArgumentParser:
+def infer_argument_init() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--debug", "-d", required=False, action="store_true")
-    argparser.add_argument("--history", "-i", required=False, type=str, default="")
-    argparser.add_argument("--no-adapter", "-a", required=False, action="store_true")
+    argparser.add_argument(
+        "--debug",
+        "-d",
+        required=False,
+        action="store_true",
+        help="debug mode, don't format response from model",
+    )
+    argparser.add_argument(
+        "--history",
+        required=False,
+        type=str,
+        metavar="FILE",
+        default="",
+        help="path to history file (e.g. 'context/history.txt'). if not provided, no history will be used",
+    )
+    argparser.add_argument(
+        "--no-adapter",
+        "-a",
+        required=False,
+        action="store_true",
+        help="don't use LoRA adapter for Remi",
+    )
     return argparser
 
 
