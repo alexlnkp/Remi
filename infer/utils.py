@@ -1,7 +1,7 @@
 import argparse
 import importlib.util
 import os
-from typing import Any, Tuple
+from typing import Tuple
 
 import cursor
 import regex as re
@@ -10,8 +10,9 @@ from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
+    LlamaForCausalLM,
+    LlamaTokenizerFast,
     PreTrainedTokenizer,
-    PreTrainedTokenizerFast,
 )
 
 NF4_CONF = BitsAndBytesConfig(
@@ -28,15 +29,12 @@ def hide_cursor() -> None:
 
 def get_model_and_tokenizer(
     model_name: str,
-) -> tuple[Any, PreTrainedTokenizer | PreTrainedTokenizerFast]:
-    model = AutoModelForCausalLM.from_pretrained(
+) -> tuple[LlamaForCausalLM, LlamaTokenizerFast]:
+    model: LlamaForCausalLM = AutoModelForCausalLM.from_pretrained(
         model_name, device_map="auto", quantization_config=NF4_CONF
     )
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        padding_side="left",
-        add_eos_token=True,
-        add_bos_token=True,
+    tokenizer: LlamaTokenizerFast = AutoTokenizer.from_pretrained(
+        model_name, padding_side="left"
     )
 
     return model, tokenizer
@@ -70,8 +68,9 @@ def collect_user_input(user_input_text: str) -> str:
 
 def argument_init() -> argparse.ArgumentParser:
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--debug", "-d", action="store_true")
+    argparser.add_argument("--debug", "-d", required=False, action="store_true")
     argparser.add_argument("--history", "-i", required=False, type=str, default="")
+    argparser.add_argument("--no-adapter", "-a", required=False, action="store_true")
     return argparser
 
 

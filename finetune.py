@@ -2,13 +2,13 @@
 
 from typing import List
 
-from peft import LoraConfig, TaskType
 from sklearn.model_selection import train_test_split
 from torch import device as torch_device
 from torch.utils.data import DataLoader
 from transformers import Trainer, TrainingArguments
 
 from ft.lib import (
+    LORA_CONF,
     RemiDataset,
     dictionarize_dataset,
     get_input_and_target_list,
@@ -32,23 +32,6 @@ EPOCHS = 10
 MAX_SEQUENCE_LENGTH = 2048
 
 # endregion
-
-LORA_CONF = LoraConfig(
-    r=8,
-    target_modules=[
-        "q_proj",
-        "o_proj",
-        "k_proj",
-        "v_proj",
-        "gate_proj",
-        "up_proj",
-        "down_proj",
-    ],
-    bias="none",
-    task_type=TaskType.CAUSAL_LM,
-    # lora_alpha=32,
-    # lora_dropout=0.1,
-)
 
 
 if __name__ == "__main__":

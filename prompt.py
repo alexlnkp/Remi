@@ -1,5 +1,7 @@
 #!.venv/bin/python
 
+import torch
+
 from infer.utils import (
     argument_init,
     check_gpu,
@@ -38,9 +40,16 @@ if __name__ == "__main__":
     cuda_available: bool = check_gpu()
     print("Cuda available" if cuda_available else "Cuda not available")
 
+    device: torch.device = "cuda" if cuda_available else "cpu"
+
     hide_cursor()
     model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
     clear_terminal()
+
+    if not args.no_adapter:
+        model.load_adapter("413x1nkp/LL7M-Remi", adapter_name="remi")
+        model.set_adapter("remi")
+        model.enable_adapters()
 
     model.eval()
 
@@ -67,7 +76,7 @@ if __name__ == "__main__":
         model_inputs = tokenizer(
             [chat],
             return_tensors="pt",
-        ).to("cuda" if cuda_available else "cpu")
+        ).to(device)
 
         generated_ids = model.generate(
             **model_inputs, max_length=4096, repetition_penalty=1.16
