@@ -1,95 +1,40 @@
 #!.venv/bin/python
 
-import torch
+from infer.utils import main
 
-from infer.utils import (
-    check_gpu,
-    clear_cuda_cache,
-    clear_terminal,
-    collect_user_input,
-    decode_response,
-    get_model_and_tokenizer,
-    get_uinput_and_response_format,
-    hide_cursor,
-    infer_argument_init,
-)
+"""
+This script is the main entry point of the inference script. It is responsible
+for initializing the inferencer based on the command-line arguments and running
+the inference loop.
+"""
 
-USER_INPUT_TEXT, RESPONSE_META = get_uinput_and_response_format()
 
 ASSISTANT_NAME: str = "Remi"
-USER_NAME: str = "Alex"
+"""
+The name of the assistant generating the responses.
+"""
 
-role_template: str = open("context/role.txt", "r").read()
-guidelines: str = open("context/guidelines.txt", "r").read()
+
+USER_NAME: str = "Alex"
+"""
+The name of the user in the conversation.
+"""
+
 
 INPUT_DATA: str = (
-    role_template.replace("\n", " ")
+    open("context/role.txt", "r").read().replace("\n", " ")
     + " "
-    + guidelines.format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME).replace(
-        "\n", " "
-    )
+    + open("context/guidelines.txt", "r")
+    .read()
+    .format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME=USER_NAME)
+    .replace("\n", " ")
 )
+"""
+The initial input data for the conversation. This is the text that is passed
+to the inferencer as the initial context.
+"""
 
-
-del role_template, guidelines
 
 if __name__ == "__main__":
-    argparser = infer_argument_init()
-    args = argparser.parse_args()
-
-    cuda_available: bool = check_gpu()
-    print("Cuda available" if cuda_available else "Cuda not available")
-
-    device: torch.device = "cuda" if cuda_available else "cpu"
-
-    hide_cursor()
-    model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
-    clear_terminal()
-
-    if not args.no_adapter:
-        model.load_adapter("413x1nkp/LL7M-Remi", adapter_name="remi")
-        model.set_adapter("remi")
-        model.enable_adapters()
-
-    model.eval()
-
-    history: str = (
-        (
-            open(args.history, "r")
-            .read()
-            .format(ASSISTANT_NAME=ASSISTANT_NAME, USER_NAME="User")
-        )
-        + "\n"
-        if args.history
-        else ""
-    )
-
-    while True:
-        usr_input: str = collect_user_input(USER_INPUT_TEXT)
-        if usr_input == "xlxquit":
-            break
-
-        chat: str = (
-            f"## History:\n{history}\n## Input:\nSystem: {INPUT_DATA}\nUser: {usr_input}\n## Response:\n"
-        )
-
-        model_inputs = tokenizer(
-            [chat],
-            return_tensors="pt",
-        ).to(device)
-
-        generated_ids = model.generate(
-            **model_inputs, max_new_tokens=4096, repetition_penalty=1.16
-        )
-        response, index = decode_response(tokenizer, generated_ids, ASSISTANT_NAME)
-
-        history += f"User: {usr_input}\n{ASSISTANT_NAME}: {index}\n"
-
-        clear_cuda_cache()
-        del model_inputs, generated_ids
-
-        if not args.debug and usr_input != "fuck":
-            print(RESPONSE_META + index.strip() + "\n")
-            continue
-
-        print(response)
+    # Run the inferencer
+    main(ASSISTANT_NAME, INPUT_DATA)
