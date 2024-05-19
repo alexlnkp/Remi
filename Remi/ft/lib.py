@@ -1,20 +1,19 @@
 from os import listdir
 from os.path import isfile, join
-from pathlib import Path
 from typing import Dict, List, Tuple
 
 import torch
-from peft import (
-    LoraConfig,
-    PeftConfig,
-    PeftModelForCausalLM,
-    TaskType,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-)
+import torch.utils.data
+from peft.config import PeftConfig
+from peft.mapping import get_peft_model
+from peft.mixed_model import PeftMixedModel
+from peft.peft_model import PeftModel
+from peft.tuners.lora import LoraConfig
+from peft.utils.other import prepare_model_for_kbit_training
+from peft.utils.peft_types import TaskType
 from transformers import BatchEncoding, LlamaForCausalLM, LlamaTokenizer
 
-from infer.utils import get_model_and_tokenizer
+from Remi.infer.utils import get_model_and_tokenizer
 
 LORA_CONF = LoraConfig(
     r=8,
@@ -34,7 +33,7 @@ LORA_CONF = LoraConfig(
 )
 
 
-def grab_dataset(path: Path) -> List[str]:
+def grab_dataset(path: str) -> List[str]:
     """
     This function reads and returns the contents of files in the specified path.
 
@@ -179,8 +178,8 @@ class RemiDataset(torch.utils.data.Dataset):
             `inputs`: `BatchEncoding` - The input batch encoding.
             `targets`: `BatchEncoding` - The target batch encoding.
         """
-        self.inputs = inputs
-        self.targets = targets
+        self.inputs: BatchEncoding = inputs
+        self.targets: BatchEncoding = targets
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         """
@@ -190,7 +189,7 @@ class RemiDataset(torch.utils.data.Dataset):
             `idx`: `int` - The index of the item.
 
         Returns:
-            `Dict`[`str`, `torch.Tensor`] - A dictionary containing the input_ids and labels.
+            `Dict[str, torch.Tensor]` - A dictionary containing the input_ids and labels.
         """
         # Get the input_ids tensor
         input_ids: torch.Tensor = (
@@ -269,17 +268,25 @@ def prepare_encodings(
         .convert_to_tensors()
         .to(device)
     )
-    x_train_encodings["input_ids"] = x_train_encodings["input_ids"].permute(1, 0)
-    y_train_encodings["input_ids"] = y_train_encodings["input_ids"].permute(1, 0)
-    x_test_encodings["input_ids"] = x_test_encodings["input_ids"].permute(1, 0)
-    y_test_encodings["input_ids"] = y_test_encodings["input_ids"].permute(1, 0)
+    x_train_encodings["input_ids"] = (
+        x_train_encodings["input_ids"].clone().detach().permute(1, 0)
+    )
+    y_train_encodings["input_ids"] = (
+        y_train_encodings["input_ids"].clone().detach().permute(1, 0)
+    )
+    x_test_encodings["input_ids"] = (
+        x_test_encodings["input_ids"].clone().detach().permute(1, 0)
+    )
+    y_test_encodings["input_ids"] = (
+        y_test_encodings["input_ids"].clone().detach().permute(1, 0)
+    )
 
     return x_train_encodings, x_test_encodings, y_train_encodings, y_test_encodings
 
 
 def prepare_tokenizer_and_peft_model(
     model_path_or_name: str, peft_conf: PeftConfig
-) -> tuple[LlamaTokenizer, PeftModelForCausalLM]:
+) -> tuple[LlamaTokenizer, PeftModel | PeftMixedModel]:
     _model: LlamaForCausalLM
     tokenizer: LlamaTokenizer
 
@@ -291,5 +298,5 @@ def prepare_tokenizer_and_peft_model(
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
-    model: PeftModelForCausalLM = get_peft_model(_model, peft_conf)
+    model: PeftModel | PeftMixedModel = get_peft_model(_model, peft_conf)
     return tokenizer, model

@@ -7,7 +7,7 @@ from torch import device as torch_device
 from torch.utils.data import DataLoader
 from transformers import Trainer, TrainingArguments
 
-from ft.lib import (
+from Remi.ft import (
     LORA_CONF,
     RemiDataset,
     dictionarize_dataset,
@@ -18,7 +18,7 @@ from ft.lib import (
     prepare_tokenizer_and_peft_model,
     preprocess_dataset,
 )
-from infer.utils import check_gpu
+from Remi.infer.utils import check_gpu
 
 DATASET_PATH = "ft/xlx_ft_dataset"
 SEPARATOR_CHAR = "-----------------------------------------------------------------\n"
@@ -38,7 +38,9 @@ if __name__ == "__main__":
     cuda_available: bool = check_gpu()
 
     print(f"Cuda {'not ' if not cuda_available else ''}available")
-    device: torch_device = "cuda" if cuda_available else "cpu"
+    device: torch_device = (
+        torch_device("cuda") if cuda_available else torch_device("cpu")
+    )
 
     f_dataset: List[str] = merge_datasets(
         preprocess_dataset(grab_dataset(DATASET_PATH), SEPARATOR_CHAR)

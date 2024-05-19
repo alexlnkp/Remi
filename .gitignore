@@ -1,5 +1,8 @@
 .venv
 .vscode
 *__pycache__*
-ft/ckpt
-ft/xlx_ft_dataset
+Remi/ft/ckpt
+Remi/ft/xlx_ft_dataset
+build
+*.c
+*.so

@@ -12,7 +12,7 @@ from transformers import (
     BatchEncoding,
     BitsAndBytesConfig,
     LlamaForCausalLM,
-    LlamaTokenizerFast,
+    LlamaTokenizer,
     PreTrainedTokenizer,
 )
 
@@ -49,10 +49,10 @@ def get_uinput_and_response_format() -> tuple[str, str]:
         colorama_init(autoreset=True)
 
         # Format the user input text with a dimmed blue color
-        user_input_text = f"{Style.DIM}{Fore.BLUE}>{Style.RESET_ALL} "
+        user_input_text = "{}{}>{} ".format(Style.DIM, Fore.BLUE, Style.RESET_ALL)
 
         # Format the response meta string with a bright light red color
-        response_meta = f"{Style.BRIGHT}{Fore.LIGHTRED_EX}"
+        response_meta = "{}{}".format(Style.BRIGHT, Fore.LIGHTRED_EX)
     else:
         # If colorama is not available, print a message
         print("Colorama is not available, will not use fancy output text... :(")
@@ -73,7 +73,7 @@ def show_cursor() -> None:
 
 def get_model_and_tokenizer(
     model_name: str,
-) -> tuple[LlamaForCausalLM, LlamaTokenizerFast]:
+) -> tuple[LlamaForCausalLM, LlamaTokenizer]:
     """
     Load a pre-trained LLaMA model and tokenizer from Hugging Face Hub.
 
@@ -81,7 +81,7 @@ def get_model_and_tokenizer(
         `model_name`: `str` - The name of the pre-trained model to load.
 
     Returns:
-        `tuple[LlamaForCausalLM, LlamaTokenizerFast]` - A tuple containing the loaded model and tokenizer.
+        `tuple[LlamaForCausalLM, LlamaTokenizer]` - A tuple containing the loaded model and tokenizer.
     """
     model: LlamaForCausalLM = AutoModelForCausalLM.from_pretrained(
         model_name,
@@ -89,7 +89,7 @@ def get_model_and_tokenizer(
         # Use NF4 quantization configuration for 4-bit training
         quantization_config=NF4_CONF,
     )
-    tokenizer: LlamaTokenizerFast = AutoTokenizer.from_pretrained(
+    tokenizer: LlamaTokenizer = AutoTokenizer.from_pretrained(
         model_name,
         # Set padding side to left to align with the default behavior of the LLaMA tokenizer
         padding_side="left",
@@ -215,7 +215,7 @@ def decode_response(
 
 def prepare_model_and_tokenizer_for_inference(
     args: argparse.Namespace,
-) -> tuple[LlamaForCausalLM, LlamaTokenizerFast]:
+) -> tuple[LlamaForCausalLM, LlamaTokenizer]:
     """
     Load the pre-trained LLaMA model and tokenizer, and prepare the model for inference.
 
@@ -223,7 +223,7 @@ def prepare_model_and_tokenizer_for_inference(
         `args`: `argparse.Namespace` - The parsed command-line arguments.
 
     Returns:
-        `tuple[LlamaForCausalLM, LlamaTokenizerFast]`: A tuple containing the loaded model and tokenizer.
+        `tuple[LlamaForCausalLM, LlamaTokenizer]`: A tuple containing the loaded model and tokenizer.
     """
     model, tokenizer = get_model_and_tokenizer("JosephusCheung/LL7M")
 
@@ -249,7 +249,7 @@ def prepare_model_and_tokenizer_for_inference(
 
 def tokenize_chat(
     device: torch.device,
-    tokenizer: LlamaTokenizerFast,
+    tokenizer: LlamaTokenizer,
     chat: str,
 ) -> BatchEncoding:
     """
@@ -257,7 +257,7 @@ def tokenize_chat(
 
     Args:
         `device`: `torch.device` - The device to move the tokenized input to.
-        `tokenizer`: `LlamaTokenizerFast` - The tokenizer used to tokenize the input.
+        `tokenizer`: `LlamaTokenizer` - The tokenizer used to tokenize the input.
         `chat`: `str` - The input chat to be tokenized.
 
     Returns:
@@ -290,8 +290,14 @@ def generate_response(
         batch encoding, and generates a response based on those parameters. The response is
         generated in the form of IDs, which are then converted to text using the tokenizer.
     """
-    generated_ids = model.generate(
-        **model_inputs, max_new_tokens=4096, repetition_penalty=1.16
+    generated_ids = (
+        model.generate(
+            model_inputs["input_ids"].clone().detach(),
+            max_new_tokens=4096,
+            repetition_penalty=1.16,
+        )
+        .clone()
+        .detach()
     )
 
     return generated_ids
@@ -299,7 +305,7 @@ def generate_response(
 
 def mainloop(
     model: LlamaForCausalLM,
-    tokenizer: LlamaTokenizerFast,
+    tokenizer: LlamaTokenizer,
     device: torch.device,
     args: argparse.Namespace,
     history: str,
@@ -333,7 +339,7 @@ def mainloop(
 
         # Create the chat string containing the history, input data, and user input
         chat: str = (
-            f"## History:\n{history}\n## Input:\nSystem: {input_data}\nUser: {usr_input}\n## Response:\n"
+            "## History:\n{}\n## Input:\nSystem: {}\nUser: {}\n## Response:\n".format(history, input_data, usr_input)
         )
 
         # Tokenize the chat string
@@ -346,7 +352,7 @@ def mainloop(
         response, index = decode_response(tokenizer, generated_ids, assistant_name)
 
         # Append the user input and generated response to the history string
-        history += f"User: {usr_input}\n{assistant_name}: {index}\n"
+        history += "User: {}\n{}: {}\n".format(usr_input, assistant_name, index)
 
         # Clear the CUDA cache to free up memory
         clear_cuda_cache()
@@ -414,7 +420,9 @@ def main(
     cuda_available: bool = check_gpu()
     print("Cuda available" if cuda_available else "Cuda not available")
 
-    device: torch.device = "cuda" if cuda_available else "cpu"
+    device: torch.device = (
+        torch.device("cuda") if cuda_available else torch.device("cpu")
+    )
 
     hide_cursor()
 

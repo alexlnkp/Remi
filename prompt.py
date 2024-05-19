@@ -1,6 +1,6 @@
 #!.venv/bin/python
 
-from infer.utils import main
+import Remi.infer as infer
 
 """
 This script is the main entry point of the inference script. It is responsible
@@ -37,4 +37,4 @@ to the inferencer as the initial context.
 
 if __name__ == "__main__":
     # Run the inferencer
-    main(ASSISTANT_NAME, INPUT_DATA)
+    infer.main(ASSISTANT_NAME, INPUT_DATA)
