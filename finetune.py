@@ -20,7 +20,7 @@ from Remi.ft import (
 )
 from Remi.infer.utils import check_gpu
 
-DATASET_PATH = "ft/xlx_ft_dataset"
+DATASET_PATH = "Remi/ft/xlx_ft_dataset"
 SEPARATOR_CHAR = "-----------------------------------------------------------------\n"
 
 # region Hyperparams
@@ -82,12 +82,12 @@ if __name__ == "__main__":
     val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=False)
 
     training_args = TrainingArguments(
-        output_dir="./ft/ckpt",
+        output_dir="./Remi/ft/ckpt",
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
         gradient_checkpointing=True,
-        logging_dir="./ft/logs",
+        logging_dir="./Remi/ft/logs",
         logging_steps=10,
         evaluation_strategy="epoch",
         save_strategy="epoch",

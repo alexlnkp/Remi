@@ -6,3 +6,5 @@ Remi/ft/xlx_ft_dataset
 build
 *.c
 *.so
+*.egg-info
+dist

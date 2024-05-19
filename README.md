@@ -13,7 +13,8 @@ Remi is a chatbot that utilizes a pre-trained language model, LL7M, to provide e
 
 1. Clone the repository. `git clone https://github.com/alexlnkp/Remi.git`
 2. Create a Python virtual environment. `python -m venv .venv`
-3. Install required libraries in the virtual environment. `pip install -r infer.req`
+3. Install required libraries in the virtual environment. `pip install -r infer.req` for inference (`prompt.py`) and `pip install -r ft.req` for finetuning (`finetune.py`) or `pip install -r all.req` for both.
+4. Run `python setup.py install` to build and install the Remi library.
 
 ### Usage
 
